@@ -84,18 +84,20 @@ func appAndService(v map[string]string) (string, string) {
 	return v[appLabel], v[serviceLabel]
 }
 
+// TODO: write a generic dotted path walker for the map[string]interface{}
+// (again).
 func extractService(v map[string]interface{}) *Service {
 	meta := v["metadata"].(map[string]interface{})
 	spec := v["spec"].(map[string]interface{})
 	templateSpec := spec["template"].(map[string]interface{})["spec"].(map[string]interface{})
 	svc := &Service{
-		Name:      meta["name"].(string),
+		Name:      mapString("name", meta),
 		Namespace: mapString("namespace", meta),
 		Replicas:  spec["replicas"].(int64),
 		Images:    []string{},
 	}
 	for _, v := range templateSpec["containers"].([]interface{}) {
-		svc.Images = append(svc.Images, v.(map[string]interface{})["image"].(string))
+		svc.Images = append(svc.Images, mapString("image", v.(map[string]interface{})))
 	}
 	return svc
 }
