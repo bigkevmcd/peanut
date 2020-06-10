@@ -3,6 +3,7 @@ package parser
 import (
 	"testing"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -64,6 +65,29 @@ func TestParseApplication(t *testing.T) {
 			t.Errorf("%s failed to parse:\n%s", tt.filename, diff)
 		}
 	}
+}
+
+func TestParseApplicationFromGit(t *testing.T) {
+	app, err := ParseFromGit(
+		"pkg/parser/testdata/go-demo",
+		&git.CloneOptions{
+			URL:   "../../",
+			Depth: 1,
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := &Config{
+		AppsToServices: map[string][]string{
+			"go-demo": {"go-demo", "redis"},
+		},
+		Services: map[string]*Service{
+			"go-demo": {Name: "go-demo-http", Replicas: 1, Images: []string{"bigkevmcd/go-demo:876ecb3"}},
+			"redis":   {Name: "redis", Replicas: 1, Images: []string{"redis:6-alpine"}},
+		},
+	}
+	assertCmp(t, want, app, "failed to match app")
 }
 
 func TestExtractAppAndServices(t *testing.T) {

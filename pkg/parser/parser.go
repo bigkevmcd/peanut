@@ -3,10 +3,15 @@ package parser
 import (
 	"sort"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/storage/memory"
+
 	"sigs.k8s.io/kustomize/k8sdeps"
 	"sigs.k8s.io/kustomize/pkg/fs"
 	"sigs.k8s.io/kustomize/pkg/loader"
 	"sigs.k8s.io/kustomize/pkg/target"
+
+	"github.com/bigkevmcd/peanut/pkg/gitfs"
 )
 
 const (
@@ -38,14 +43,48 @@ type Service struct {
 //
 // Also multi-Deployment services are not supported currently.
 func Parse(path string) (*Config, error) {
-	cfg := &Config{AppsToServices: map[string][]string{}, Services: map[string]*Service{}}
-	k8sfactory := k8sdeps.NewFactory()
 	fs := fs.MakeRealFS()
-	ldr, err := loader.NewLoader(path, fs)
+	return parseConfig(path, fs)
+}
+
+// ParseFromGit takes a go-git CloneOptions struct and a filepath, and extracts
+// the service configuration from there.
+func ParseFromGit(path string, opts *git.CloneOptions) (*Config, error) {
+	clone, err := git.Clone(memory.NewStorage(), nil, opts)
 	if err != nil {
 		return nil, err
 	}
-	defer ldr.Cleanup()
+	ref, err := clone.Head()
+	if err != nil {
+		return nil, err
+	}
+	commit, err := clone.CommitObject(ref.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	tree, err := commit.Tree()
+	if err != nil {
+		return nil, err
+	}
+
+	gfs := gitfs.New(tree)
+	return parseConfig(path, gfs)
+}
+
+func parseConfig(path string, files fs.FileSystem) (*Config, error) {
+	cfg := &Config{AppsToServices: map[string][]string{}, Services: map[string]*Service{}}
+	k8sfactory := k8sdeps.NewFactory()
+	ldr, err := loader.NewLoader(path, files)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err = ldr.Cleanup()
+		if err != nil {
+			panic(err)
+		}
+	}()
 	kt, err := target.NewKustTarget(ldr, k8sfactory.ResmapF, k8sfactory.TransformerF)
 	if err != nil {
 		return nil, err
