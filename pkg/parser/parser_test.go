@@ -6,16 +6,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestParseEmptyFile(t *testing.T) {
-	app, err := Parse("testdata/app1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if app != nil {
-		t.Fatalf("wanted no app, got %#v", app)
-	}
-}
-
 func TestParseNoFile(t *testing.T) {
 	app, err := Parse("testdata")
 
@@ -28,21 +18,52 @@ func TestParseNoFile(t *testing.T) {
 }
 
 func TestParseApplication(t *testing.T) {
-	app, err := Parse("testdata/go-demo")
-	if err != nil {
-		t.Fatal(err)
+	parseTests := []struct {
+		filename    string
+		description string
+		want        *Config
+	}{
+		{
+			"testdata/app1",
+			"empty kustomization",
+			nil,
+		},
+		{
+			"testdata/go-demo",
+			"completely local - paths refer to relative paths",
+			&Config{
+				AppsToServices: map[string][]string{
+					"go-demo": {"go-demo", "redis"},
+				},
+				Services: map[string]*Service{
+					"go-demo": {Name: "go-demo-http", Replicas: 1, Images: []string{"bigkevmcd/go-demo:876ecb3"}},
+					"redis":   {Name: "redis", Replicas: 1, Images: []string{"redis:6-alpine"}},
+				},
+			},
+		},
+		{
+			"testdata/app2",
+			"local file refers to a remote path - THIS COULD BREAK",
+			&Config{
+				AppsToServices: map[string][]string{
+					"taxi": {"taxi"},
+				},
+				Services: map[string]*Service{
+					"taxi": {Name: "taxi", Replicas: 1, Images: []string{"quay.io/kmcdermo/taxi:147036"}},
+				},
+			},
+		},
 	}
 
-	want := &Config{
-		AppsToServices: map[string][]string{
-			"go-demo": {"go-demo", "redis"},
-		},
-		Services: map[string]*Service{
-			"go-demo": {Name: "go-demo-http", Replicas: 1, Images: []string{"bigkevmcd/go-demo:876ecb3"}},
-			"redis":   {Name: "redis", Replicas: 1, Images: []string{"redis:6-alpine"}},
-		},
+	for _, tt := range parseTests {
+		app, err := Parse(tt.filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(tt.want, app); diff != "" {
+			t.Errorf("%s failed to parse:\n%s", tt.filename, diff)
+		}
 	}
-	assertCmp(t, want, app, "failed to match app")
 }
 
 func TestExtractAppAndServices(t *testing.T) {
