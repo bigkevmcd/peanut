@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -36,10 +37,11 @@ func makeRootCmd() *cobra.Command {
 
 			for app, svcs := range cfg.AppsToServices {
 				fmt.Fprintf(w, "application: %s\n", app)
-				fmt.Fprintln(w, "name\tnamespace\treplicas\t")
+				fmt.Fprintln(w, "name\tnamespace\treplicas\timages\t")
 				for _, name := range svcs {
 					svc := cfg.Services[name]
-					fmt.Fprintf(w, "%s\t%s\t%d\t\n", svc.Name, svc.Namespace, svc.Replicas)
+					images := strings.Join(svc.Images, ",")
+					fmt.Fprintf(w, "%s\t%s\t%d\t%s\t\n", svc.Name, svc.Namespace, svc.Replicas, images)
 				}
 			}
 

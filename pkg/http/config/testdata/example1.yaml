@@ -1,0 +1,6 @@
+apps:
+- name: go-demo
+  environments:
+  - name: dev
+  - name: staging
+  - name: production
