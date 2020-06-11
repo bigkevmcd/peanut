@@ -16,6 +16,7 @@ require (
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/googleapis/gnostic v0.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/julienschmidt/httprouter v1.2.0
 	github.com/mailru/easyjson v0.0.0-20180606163543-3fdea8d05856 // indirect
 	github.com/onsi/ginkgo v1.12.3 // indirect
 	github.com/spf13/cobra v0.0.2

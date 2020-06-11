@@ -107,57 +107,6 @@ func parseConfig(path string, files fs.FileSystem) (*Config, error) {
 	return cfg, nil
 }
 
-// ParseFromGit takes a go-git CloneOptions struct and a filepath, and extracts
-// the service configuration from there.
-func ParseFromGit(path string, opts *git.CloneOptions) (*Config, error) {
-	cfg := &Config{AppsToServices: map[string][]string{}, Services: map[string]*Service{}}
-	k8sfactory := k8sdeps.NewFactory()
-	clone, err := git.Clone(memory.NewStorage(), nil, opts)
-	if err != nil {
-		return nil, err
-	}
-	ref, err := clone.Head()
-	if err != nil {
-		return nil, err
-	}
-	commit, err := clone.CommitObject(ref.Hash())
-	if err != nil {
-		return nil, err
-	}
-
-	tree, err := commit.Tree()
-	if err != nil {
-		return nil, err
-	}
-
-	gfs := gitfs.New(tree)
-	ldr, err := loader.NewLoader(path, gfs)
-	if err != nil {
-		return nil, err
-	}
-	defer ldr.Cleanup()
-	kt, err := target.NewKustTarget(ldr, k8sfactory.ResmapF, k8sfactory.TransformerF)
-	if err != nil {
-		return nil, err
-	}
-	r, err := kt.MakeCustomizedResMap()
-	if err != nil {
-		return nil, err
-	}
-	if len(r) == 0 {
-		return nil, nil
-	}
-	for k, v := range r {
-		gvk := k.Gvk()
-		switch gvk.Kind {
-		case "Deployment":
-			svc := extractAppAndServices(v.GetLabels(), cfg.AppsToServices)
-			cfg.Services[svc] = extractService(v.Map())
-		}
-	}
-	return cfg, nil
-}
-
 func extractAppAndServices(meta map[string]string, state map[string][]string) string {
 	app, svc := appAndService(meta)
 	appSvcs, ok := state[app]

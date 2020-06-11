@@ -1,48 +1,60 @@
 package config
 
 import (
-	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-
-	"sigs.k8s.io/yaml"
+	"path/filepath"
 )
 
+// Environment is a k8s namespace/cluster that an application is deployed.
 type Environment struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	RelPath string `json:"rel_path"` // This is relative to the Path for the parent App.
+	App     *App   `json:"-"`
 }
 
+// App represents a high-level application that is deployed across multiple
+// environments, and configured through Kustomize.
 type App struct {
-	Name         string        `json:"name"`
-	Environments []Environment `json:"environments"`
+	Name         string         `json:"name"`
+	RepoURL      string         `json:"repo_url"`
+	Path         string         `json:"path"`
+	Environments []*Environment `json:"environments"`
 }
 
+// Config represents the managed apps.
 type Config struct {
-	Apps []App `json:"apps,omitempty"`
+	Apps []*App `json:"apps,omitempty"`
 }
 
-// Parse decodes YAML describing an environment manifest.
-func Parse(in io.Reader) (*Config, error) {
-	m := &Config{}
-	buf, err := ioutil.ReadAll(in)
-	if err != nil {
-		return nil, err
+// App returns the named app, or nil if not found.
+func (c *Config) App(name string) *App {
+	for _, v := range c.Apps {
+		if v.Name == name {
+			return v
+		}
 	}
-	err = yaml.Unmarshal(buf, m)
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
+	return nil
 }
 
-// ParseFile is a wrapper around Parse that accepts a filename, it opens and
-// parses the file, and closes it.
-func ParseFile(filename string) (*Config, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open: %s", filename)
+// Environment gets a named environment.
+func (a *App) Environment(name string) *Environment {
+	for _, v := range a.Environments {
+		if v.Name == name {
+			v.App = a
+			return v
+		}
 	}
-	defer f.Close()
-	return Parse(f)
+	return nil
+}
+
+// Path returns the app-relative path for the kustomize.yaml for this
+// environment.
+//
+// For example, app in /test/base and environment in "../dev" would get
+// "/test/dev".
+func (e *Environment) Path() string {
+	path, err := filepath.Abs(filepath.Join(e.App.Path, e.RelPath))
+	if err != nil {
+		panic(err)
+	}
+	return path
 }

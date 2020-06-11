@@ -42,6 +42,18 @@ func TestReadFile(t *testing.T) {
 	}
 }
 
+func TestIsDir(t *testing.T) {
+	gfs := makeClonedGFS(t)
+
+	if gfs.IsDir("README.md") {
+		t.Fatal("IsDir() returned true for a file")
+	}
+
+	if !gfs.IsDir("pkg") {
+		t.Fatal("IsDir() returned false for a directory")
+	}
+}
+
 func TestCleanedAbs(t *testing.T) {
 	gfs := makeClonedGFS(t)
 
