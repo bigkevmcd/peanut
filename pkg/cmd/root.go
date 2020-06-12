@@ -35,11 +35,10 @@ func makeRootCmd() *cobra.Command {
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.TabIndent)
 			defer w.Flush()
 
-			for app, svcs := range cfg.AppsToServices {
-				fmt.Fprintf(w, "application: %s\n", app)
+			for _, app := range cfg.Apps {
+				fmt.Fprintf(w, "application: %s\n", app.Name)
 				fmt.Fprintln(w, "name\tnamespace\treplicas\timages\t")
-				for _, name := range svcs {
-					svc := cfg.Services[name]
+				for _, svc := range app.Services {
 					images := strings.Join(svc.Images, ",")
 					fmt.Fprintf(w, "%s\t%s\t%d\t%s\t\n", svc.Name, svc.Namespace, svc.Replicas, images)
 				}
