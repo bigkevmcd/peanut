@@ -33,12 +33,14 @@ func TestParseApplication(t *testing.T) {
 			"testdata/go-demo",
 			"completely local - paths refer to relative paths",
 			&Config{
-				AppsToServices: map[string][]string{
-					"go-demo": {"go-demo", "redis"},
-				},
-				Services: map[string]*Service{
-					"go-demo": {Name: "go-demo-http", Replicas: 1, Images: []string{"bigkevmcd/go-demo:876ecb3"}},
-					"redis":   {Name: "redis", Replicas: 1, Images: []string{"redis:6-alpine"}},
+				Apps: []*App{
+					{
+						Name: "go-demo",
+						Services: []*Service{
+							{Name: "go-demo-http", Replicas: 1, Images: []string{"bigkevmcd/go-demo:876ecb3"}},
+							{Name: "redis", Replicas: 1, Images: []string{"redis:6-alpine"}},
+						},
+					},
 				},
 			},
 		},
@@ -46,11 +48,13 @@ func TestParseApplication(t *testing.T) {
 			"testdata/app2",
 			"local file refers to a remote path - THIS COULD BREAK",
 			&Config{
-				AppsToServices: map[string][]string{
-					"taxi": {"taxi"},
-				},
-				Services: map[string]*Service{
-					"taxi": {Name: "taxi", Replicas: 1, Images: []string{"quay.io/kmcdermo/taxi:147036"}},
+				Apps: []*App{
+					{
+						Name: "taxi",
+						Services: []*Service{
+							{Name: "taxi", Replicas: 1, Images: []string{"quay.io/kmcdermo/taxi:147036"}},
+						},
+					},
 				},
 			},
 		},
@@ -79,35 +83,26 @@ func TestParseApplicationFromGit(t *testing.T) {
 	}
 
 	want := &Config{
-		AppsToServices: map[string][]string{
-			"go-demo": {"go-demo", "redis"},
-		},
-		Services: map[string]*Service{
-			"go-demo": {Name: "go-demo-http", Replicas: 1, Images: []string{"bigkevmcd/go-demo:876ecb3"}},
-			"redis":   {Name: "redis", Replicas: 1, Images: []string{"redis:6-alpine"}},
+		Apps: []*App{
+			{
+				Name: "go-demo",
+				Services: []*Service{
+					{Name: "go-demo-http", Replicas: 1, Images: []string{"bigkevmcd/go-demo:876ecb3"}},
+					{Name: "redis", Replicas: 1, Images: []string{"redis:6-alpine"}},
+				},
+			},
 		},
 	}
 	assertCmp(t, want, app, "failed to match app")
 }
 
-func TestExtractAppAndServices(t *testing.T) {
+func TestAppName(t *testing.T) {
 	redis := map[string]string{"app.kubernetes.io/name": "redis", "app.kubernetes.io/part-of": "go-demo"}
-	state := map[string][]string{}
+	name := appName(redis)
 
-	extractAppAndServices(redis, state)
-
-	want := map[string][]string{
-		"go-demo": {"redis"},
+	if name != "go-demo" {
+		t.Fatalf("got %#v, want %#v", name, "go-demo")
 	}
-	assertCmp(t, want, state, "failed to match apps and services")
-	goDemo := map[string]string{"app.kubernetes.io/name": "go-demo", "app.kubernetes.io/part-of": "go-demo"}
-
-	extractAppAndServices(goDemo, state)
-
-	want = map[string][]string{
-		"go-demo": {"go-demo", "redis"},
-	}
-	assertCmp(t, want, state, "failed to match apps and services")
 }
 
 func TestExtractService(t *testing.T) {

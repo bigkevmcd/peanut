@@ -1,4 +1,4 @@
-package api
+package http
 
 import (
 	"encoding/json"
@@ -42,7 +42,7 @@ func (a *APIRouter) GetEnvironment(w http.ResponseWriter, r *http.Request) {
 	params := httprouter.ParamsFromContext(r.Context())
 	env := a.cfg.App(params.ByName("name")).Environment(params.ByName("env"))
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(env)
+	json.NewEncoder(w).Encode(envResponse{Environment: env})
 }
 
 // NewRouter creates and returns a new APIRouter.
@@ -60,4 +60,8 @@ type listAppsResponse struct {
 
 type appResponse struct {
 	Name string `json:"name"`
+}
+
+type envResponse struct {
+	Environment *config.Environment `json:"environment"`
 }

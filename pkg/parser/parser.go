@@ -22,8 +22,23 @@ const (
 // Config is a representation of the apps and services, and configurations for
 // the services.
 type Config struct {
-	AppsToServices map[string][]string
-	Services       map[string]*Service
+	Apps []*App
+}
+
+// App gets the named app from the config, or returns nil if none exist.
+func (c *Config) App(s string) *App {
+	for _, v := range c.Apps {
+		if v.Name == s {
+			return v
+		}
+	}
+	return nil
+}
+
+// App is a component with multiple services, and in multiple environments.
+type App struct {
+	Name     string
+	Services []*Service
 }
 
 // Service is a representation of a component within the Apps/Services model.
@@ -73,7 +88,7 @@ func ParseFromGit(path string, opts *git.CloneOptions) (*Config, error) {
 }
 
 func parseConfig(path string, files fs.FileSystem) (*Config, error) {
-	cfg := &Config{AppsToServices: map[string][]string{}, Services: map[string]*Service{}}
+	cfg := &Config{Apps: []*App{}}
 	k8sfactory := k8sdeps.NewFactory()
 	ldr, err := loader.NewLoader(path, files)
 	if err != nil {
@@ -100,27 +115,26 @@ func parseConfig(path string, files fs.FileSystem) (*Config, error) {
 		gvk := k.Gvk()
 		switch gvk.Kind {
 		case "Deployment":
-			svc := extractAppAndServices(v.GetLabels(), cfg.AppsToServices)
-			cfg.Services[svc] = extractService(v.Map())
+			name := appName(v.GetLabels())
+			if name == "" {
+				continue
+			}
+			app := cfg.App(name)
+			if app == nil {
+				app = &App{Name: name}
+				cfg.Apps = append(cfg.Apps, app)
+			}
+			svc := extractService(v.Map())
+			app.Services = append(app.Services, svc)
+			sort.Slice(app.Services, func(i, j int) bool { return app.Services[i].Name < app.Services[j].Name })
 		}
 	}
+
 	return cfg, nil
 }
 
-func extractAppAndServices(meta map[string]string, state map[string][]string) string {
-	app, svc := appAndService(meta)
-	appSvcs, ok := state[app]
-	if !ok {
-		appSvcs = []string{}
-	}
-	appSvcs = append(appSvcs, svc)
-	sort.Strings(appSvcs)
-	state[app] = appSvcs
-	return svc
-}
-
-func appAndService(v map[string]string) (string, string) {
-	return v[appLabel], v[serviceLabel]
+func appName(r map[string]string) string {
+	return r[appLabel]
 }
 
 // TODO: write a generic dotted path walker for the map[string]interface{}

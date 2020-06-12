@@ -57,6 +57,7 @@ func makeRootCmd() *cobra.Command {
 	logIfError(viper.BindPFlag("kustomization-path", cmd.Flags().Lookup("kustomization-path")))
 	logIfError(cmd.MarkFlagRequired("kustomization-path"))
 
+	cmd.AddCommand(makeHTTPCmd())
 	return cmd
 }
 

@@ -1,4 +1,4 @@
-package api
+package http
 
 import (
 	"encoding/json"
@@ -58,7 +58,10 @@ func TestGetEnvironment(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertJSONResponse(t, res, map[string]interface{}{
-		"environment": map[string]interface{}{"name": string("dev")},
+		"environment": map[string]interface{}{
+			"name":     "dev",
+			"rel_path": "../overlays/dev",
+		},
 	})
 }
 
