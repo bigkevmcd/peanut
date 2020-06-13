@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/bigkevmcd/peanut/pkg/config"
 	httpapi "github.com/bigkevmcd/peanut/pkg/http"
-	"github.com/bigkevmcd/peanut/pkg/http/config"
 )
 
 func makeHTTPCmd() *cobra.Command {

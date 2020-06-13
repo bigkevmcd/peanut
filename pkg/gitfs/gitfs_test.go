@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/kustomize/pkg/fs"
 )
@@ -86,18 +85,29 @@ func assertNoError(t *testing.T, err error) {
 	}
 }
 
+func TestNewInMemoryFromOptions(t *testing.T) {
+	gfs := makeClonedGFS(t)
+
+	got, err := gfs.ReadFile("LICENSE")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := ioutil.ReadFile("../../LICENSE")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Fatalf("failed to read file:\n%s", diff)
+	}
+}
+
 func makeClonedGFS(t *testing.T) fs.FileSystem {
-	r, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
-		URL: "../../",
-	})
+	t.Helper()
+	gfs, err := NewInMemoryFromOptions(
+		&git.CloneOptions{
+			URL: "../../",
+		})
 	assertNoError(t, err)
-	ref, err := r.Head()
-	assertNoError(t, err)
-	commit, err := r.CommitObject(ref.Hash())
-	assertNoError(t, err)
-
-	tree, err := commit.Tree()
-	assertNoError(t, err)
-
-	return New(tree)
+	return gfs
 }

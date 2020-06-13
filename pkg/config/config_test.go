@@ -74,3 +74,7 @@ func TestEnvironmentPath(t *testing.T) {
 		t.Fatalf("Path() got %#v, want %#v", v, "deploy/environments/dev")
 	}
 }
+
+func TestAppParseManifests(t *testing.T) {
+
+}

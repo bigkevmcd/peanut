@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bigkevmcd/peanut/pkg/http/config"
+	"github.com/bigkevmcd/peanut/pkg/config"
 	"github.com/google/go-cmp/cmp"
 )
 

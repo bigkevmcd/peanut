@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/bigkevmcd/peanut/pkg/parser"
+	"github.com/bigkevmcd/peanut/pkg/kustomize/parser"
 )
 
 func init() {

@@ -5,8 +5,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"sigs.k8s.io/kustomize/pkg/fs"
 )
 
@@ -14,6 +16,28 @@ import (
 // filesystem abstraction.
 type gitFS struct {
 	tree *object.Tree
+}
+
+// NewInMemoryFromOptions clones a Git repository into memory.
+func NewInMemoryFromOptions(opts *git.CloneOptions) (fs.FileSystem, error) {
+	clone, err := git.Clone(memory.NewStorage(), nil, opts)
+	if err != nil {
+		return nil, err
+	}
+	ref, err := clone.Head()
+	if err != nil {
+		return nil, err
+	}
+	commit, err := clone.CommitObject(ref.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	tree, err := commit.Tree()
+	if err != nil {
+		return nil, err
+	}
+	return New(tree), nil
 }
 
 // New creates and returns a go-git storage adapter.

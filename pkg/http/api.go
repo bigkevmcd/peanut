@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/bigkevmcd/peanut/pkg/http/config"
-	"github.com/bigkevmcd/peanut/pkg/parser"
 	"github.com/go-git/go-git/v5"
 	"github.com/julienschmidt/httprouter"
+
+	"github.com/bigkevmcd/peanut/pkg/config"
+	"github.com/bigkevmcd/peanut/pkg/kustomize/parser"
 )
 
 type gitParser func(path, opts *git.CloneOptions) *parser.Config

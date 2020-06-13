@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/storage/memory"
 
 	"sigs.k8s.io/kustomize/k8sdeps"
 	"sigs.k8s.io/kustomize/pkg/fs"
@@ -65,25 +64,10 @@ func Parse(path string) (*Config, error) {
 // ParseFromGit takes a go-git CloneOptions struct and a filepath, and extracts
 // the service configuration from there.
 func ParseFromGit(path string, opts *git.CloneOptions) (*Config, error) {
-	clone, err := git.Clone(memory.NewStorage(), nil, opts)
+	gfs, err := gitfs.NewInMemoryFromOptions(opts)
 	if err != nil {
 		return nil, err
 	}
-	ref, err := clone.Head()
-	if err != nil {
-		return nil, err
-	}
-	commit, err := clone.CommitObject(ref.Hash())
-	if err != nil {
-		return nil, err
-	}
-
-	tree, err := commit.Tree()
-	if err != nil {
-		return nil, err
-	}
-
-	gfs := gitfs.New(tree)
 	return parseConfig(path, gfs)
 }
 
