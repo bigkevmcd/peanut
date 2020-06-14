@@ -1,7 +1,12 @@
 package config
 
 import (
-	"path/filepath"
+	"path"
+
+	"github.com/go-git/go-git/v5"
+
+	"github.com/bigkevmcd/peanut/pkg/gitfs"
+	"github.com/bigkevmcd/peanut/pkg/kustomize/parser"
 )
 
 // Environment is a k8s namespace/cluster that an application is deployed.
@@ -46,15 +51,58 @@ func (a *App) Environment(name string) *Environment {
 	return nil
 }
 
+// EachEnvironment iterates over each environment within the app, and calls it
+// with an environment, the environment will have it's parent app linked
+// correctly.
+func (a *App) EachEnvironment(f func(e *Environment) error) error {
+	for _, v := range a.Environments {
+		err := f(a.Environment(v.Name))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Path returns the app-relative path for the kustomize.yaml for this
 // environment.
 //
 // For example, app in /test/base and environment in "../dev" would get
 // "/test/dev".
 func (e *Environment) Path() string {
-	path, err := filepath.Abs(filepath.Join(e.App.Path, e.RelPath))
+	return path.Clean(path.Join(e.App.Path, e.RelPath))
+}
+
+// ParseManifests parses the configuration's manifests into overall picture of
+// the repository's applications.
+func (a *App) ParseManifests() (map[string]map[string]map[string][]string, error) {
+	result := map[string]map[string]map[string][]string{}
+	gfs, err := gitfs.NewInMemoryFromOptions(&git.CloneOptions{
+		URL: a.RepoURL,
+	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return path
+	// TODO: This should probably reject data if the app is not the same as
+	// a.Name.
+	a.EachEnvironment(func(e *Environment) error {
+		parsed, err := parser.ParseConfig(e.Path(), gfs)
+		if err != nil {
+			return err
+		}
+		for _, app := range parsed.Apps {
+			envs, ok := result[app.Name]
+			if !ok {
+				envs = map[string]map[string][]string{}
+			}
+			appSvcs := map[string][]string{}
+			for _, svc := range app.Services {
+				appSvcs[svc.Name] = svc.Images[:]
+			}
+			envs[e.Name] = appSvcs
+			result[app.Name] = envs
+		}
+		return nil
+	})
+	return result, nil
 }

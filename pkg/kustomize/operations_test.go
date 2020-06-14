@@ -6,7 +6,7 @@ import (
 	"sigs.k8s.io/kustomize/pkg/fs"
 	"sigs.k8s.io/kustomize/pkg/types"
 
-	"github.com/bigkevmcd/peanut/pkg/parser"
+	"github.com/bigkevmcd/peanut/pkg/kustomize/parser"
 )
 
 func TestOverrideImageUpdatesExistingOverride(t *testing.T) {

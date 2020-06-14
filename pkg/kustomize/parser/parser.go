@@ -58,7 +58,7 @@ type Service struct {
 // Also multi-Deployment services are not supported currently.
 func Parse(path string) (*Config, error) {
 	fs := fs.MakeRealFS()
-	return parseConfig(path, fs)
+	return ParseConfig(path, fs)
 }
 
 // ParseFromGit takes a go-git CloneOptions struct and a filepath, and extracts
@@ -68,10 +68,12 @@ func ParseFromGit(path string, opts *git.CloneOptions) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parseConfig(path, gfs)
+	return ParseConfig(path, gfs)
 }
 
-func parseConfig(path string, files fs.FileSystem) (*Config, error) {
+// ParseConfig takes a path and an implementation of the kustomize fs.FileSystem
+// and parses the configuration into apps.
+func ParseConfig(path string, files fs.FileSystem) (*Config, error) {
 	cfg := &Config{Apps: []*App{}}
 	k8sfactory := k8sdeps.NewFactory()
 	ldr, err := loader.NewLoader(path, files)

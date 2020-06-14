@@ -73,7 +73,7 @@ func TestParseApplication(t *testing.T) {
 
 func TestParseApplicationFromGit(t *testing.T) {
 	app, err := ParseFromGit(
-		"pkg/parser/testdata/go-demo",
+		"pkg/kustomize/parser/testdata/go-demo",
 		&git.CloneOptions{
 			URL:   "../../..",
 			Depth: 1,
