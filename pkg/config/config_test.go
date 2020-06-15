@@ -74,36 +74,3 @@ func TestEnvironmentPath(t *testing.T) {
 		t.Fatalf("Path() got %#v, want %#v", v, "deploy/environments/dev")
 	}
 }
-
-func TestAppParseManifests(t *testing.T) {
-	goDemo := &App{
-		Name:    "go-demo",
-		RepoURL: "../..",
-		Path:    "pkg/config/testdata/go-demo/base",
-		Environments: []*Environment{
-			{Name: "dev", RelPath: "../overlays/dev"},
-			{Name: "production", RelPath: "../overlays/production"},
-			{Name: "staging", RelPath: "../overlays/staging"},
-		},
-	}
-
-	all, err := goDemo.ParseManifests()
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]map[string]map[string][]string{
-		"go-demo": {
-			"dev":        {"go-demo-http": {"bigkevmcd/go-demo:latest"}, "redis": {"redis:6-alpine"}},
-			"production": {"go-demo-http": {"bigkevmcd/go-demo:production"}, "redis": {"redis:6-alpine"}},
-			"staging":    {"go-demo-http": {"bigkevmcd/go-demo:staging"}, "redis": {"redis:6-alpine"}},
-		},
-	}
-	assertCmp(t, want, all, "failed to parse manifests")
-}
-
-func assertCmp(t *testing.T, want, got interface{}, msg string) {
-	t.Helper()
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Fatalf(msg+":\n%s", diff)
-	}
-}

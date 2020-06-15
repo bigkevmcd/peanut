@@ -2,11 +2,6 @@ package config
 
 import (
 	"path"
-
-	"github.com/go-git/go-git/v5"
-
-	"github.com/bigkevmcd/peanut/pkg/gitfs"
-	"github.com/bigkevmcd/peanut/pkg/kustomize/parser"
 )
 
 // Environment is a k8s namespace/cluster that an application is deployed.
@@ -71,41 +66,4 @@ func (a *App) EachEnvironment(f func(e *Environment) error) error {
 // "/test/dev".
 func (e *Environment) Path() string {
 	return path.Clean(path.Join(e.App.Path, e.RelPath))
-}
-
-// ParseManifests parses the configuration's manifests into overall picture of
-// the repository's applications.
-// TODO: this should probably accept a fs.FileSystem to allow reusing the Git
-// clone.
-// TODO: This should also not be a map[string]map[string]map[string][]string :-)
-func (a *App) ParseManifests() (map[string]map[string]map[string][]string, error) {
-	result := map[string]map[string]map[string][]string{}
-	gfs, err := gitfs.NewInMemoryFromOptions(&git.CloneOptions{
-		URL: a.RepoURL,
-	})
-	if err != nil {
-		return nil, err
-	}
-	// TODO: This should probably reject data if the app is not the same as
-	// a.Name.
-	a.EachEnvironment(func(e *Environment) error {
-		parsed, err := parser.ParseConfig(e.Path(), gfs)
-		if err != nil {
-			return err
-		}
-		for _, app := range parsed.Apps {
-			envs, ok := result[app.Name]
-			if !ok {
-				envs = map[string]map[string][]string{}
-			}
-			appSvcs := map[string][]string{}
-			for _, svc := range app.Services {
-				appSvcs[svc.Name] = svc.Images[:]
-			}
-			envs[e.Name] = appSvcs
-			result[app.Name] = envs
-		}
-		return nil
-	})
-	return result, nil
 }
