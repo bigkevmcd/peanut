@@ -40,7 +40,7 @@ func TestGetApp(t *testing.T) {
 	assertJSONResponse(t, res, map[string]interface{}{
 		"name":     "go-demo",
 		"repo_url": "https://github.com/bigkevmcd/go-demo.git",
-		"path":     "/examples/kustomize/base",
+		"path":     "pkg/config/testdata/go-demo/base",
 		"environments": []interface{}{
 			map[string]interface{}{"name": "dev", "rel_path": "../overlays/dev"},
 			map[string]interface{}{"name": "staging", "rel_path": "../overlays/staging"},
@@ -65,13 +65,54 @@ func TestGetEnvironment(t *testing.T) {
 	})
 }
 
+func TestGetDesiredState(t *testing.T) {
+	cfg := makeConfig()
+	cfg.Apps[0].RepoURL = "../../"
+
+	// TODO: This should be mocked out, by decoupling the behaviour from the
+	// App model.
+	ts := httptest.NewTLSServer(NewRouter(cfg))
+	t.Cleanup(ts.Close)
+
+	res, err := ts.Client().Get(ts.URL + "/apps/go-demo/desired")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertJSONResponse(t, res, map[string]interface{}{
+		"app": map[string]interface{}{
+			"name":     "go-demo",
+			"repo_url": "../../",
+			"path":     "pkg/config/testdata/go-demo/base",
+			"environments": []interface{}{
+				map[string]interface{}{"name": "dev", "rel_path": "../overlays/dev"},
+				map[string]interface{}{"name": "staging", "rel_path": "../overlays/staging"},
+				map[string]interface{}{"name": "production", "rel_path": "../overlays/production"},
+			},
+		},
+		"desired": map[string]interface{}{
+			"dev": map[string]interface{}{
+				"go-demo-http": []interface{}{"bigkevmcd/go-demo:latest"},
+				"redis":        []interface{}{"redis:6-alpine"},
+			},
+			"production": map[string]interface{}{
+				"go-demo-http": []interface{}{"bigkevmcd/go-demo:production"},
+				"redis":        []interface{}{"redis:6-alpine"},
+			},
+			"staging": map[string]interface{}{
+				"go-demo-http": []interface{}{"bigkevmcd/go-demo:staging"},
+				"redis":        []interface{}{"redis:6-alpine"},
+			},
+		},
+	})
+}
+
 func makeConfig() *config.Config {
 	return &config.Config{
 		Apps: []*config.App{
 			{
 				Name:    "go-demo",
 				RepoURL: "https://github.com/bigkevmcd/go-demo.git",
-				Path:    "/examples/kustomize/base",
+				Path:    "pkg/config/testdata/go-demo/base",
 				Environments: []*config.Environment{
 					{Name: "dev", RelPath: "../overlays/dev"},
 					{Name: "staging", RelPath: "../overlays/staging"},
@@ -85,6 +126,9 @@ func makeConfig() *config.Config {
 // TODO: assert the content-type.
 func assertJSONResponse(t *testing.T, res *http.Response, want map[string]interface{}) {
 	t.Helper()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("didn't get a successful response: %v", res.StatusCode)
+	}
 	defer res.Body.Close()
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {

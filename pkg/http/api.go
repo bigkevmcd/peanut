@@ -38,6 +38,22 @@ func (a *APIRouter) GetApp(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(app)
 }
 
+// GetAppConfig returns a specific app's desired state.
+func (a *APIRouter) GetAppConfig(w http.ResponseWriter, r *http.Request) {
+	params := httprouter.ParamsFromContext(r.Context())
+	app := a.cfg.App(params.ByName("name"))
+	w.Header().Set("Content-Type", "application/json")
+
+	desired, err := app.ParseManifests()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp := configResponse{App: app, Desired: desired[app.Name]}
+	json.NewEncoder(w).Encode(resp)
+}
+
 // GetEnvironment returns a specific app.
 func (a *APIRouter) GetEnvironment(w http.ResponseWriter, r *http.Request) {
 	params := httprouter.ParamsFromContext(r.Context())
@@ -51,6 +67,7 @@ func NewRouter(cfg *config.Config) *APIRouter {
 	api := &APIRouter{Router: httprouter.New(), cfg: cfg}
 	api.HandlerFunc(http.MethodGet, "/", api.ListApps)
 	api.HandlerFunc(http.MethodGet, "/apps/:name", api.GetApp)
+	api.HandlerFunc(http.MethodGet, "/apps/:name/desired", api.GetAppConfig)
 	api.HandlerFunc(http.MethodGet, "/apps/:name/envs/:env", api.GetEnvironment)
 	return api
 }
@@ -65,4 +82,9 @@ type appResponse struct {
 
 type envResponse struct {
 	Environment *config.Environment `json:"environment"`
+}
+
+type configResponse struct {
+	App     *config.App                    `json:"app"`
+	Desired map[string]map[string][]string `json:"desired"`
 }

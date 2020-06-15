@@ -75,6 +75,9 @@ func (e *Environment) Path() string {
 
 // ParseManifests parses the configuration's manifests into overall picture of
 // the repository's applications.
+// TODO: this should probably accept a fs.FileSystem to allow reusing the Git
+// clone.
+// TODO: This should also not be a map[string]map[string]map[string][]string :-)
 func (a *App) ParseManifests() (map[string]map[string]map[string][]string, error) {
 	result := map[string]map[string]map[string][]string{}
 	gfs, err := gitfs.NewInMemoryFromOptions(&git.CloneOptions{
