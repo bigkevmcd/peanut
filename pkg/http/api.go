@@ -50,8 +50,8 @@ func (a *APIRouter) GetAppConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := configResponse{App: app, Desired: desired[app.Name]}
-	json.NewEncoder(w).Encode(resp)
+	// resp := configResponse{App: app, Desired: desired[app.Name]}
+	json.NewEncoder(w).Encode(createConfigResponse(app, desired[app.Name]))
 }
 
 // GetEnvironment returns a specific app.
@@ -84,7 +84,42 @@ type envResponse struct {
 	Environment *config.Environment `json:"environment"`
 }
 
+type configSvcResponse struct {
+	Name   string   `json:"name"`
+	Images []string `json:"images"`
+}
+
+type configEnvResponse struct {
+	Name     string               `json:"name"`
+	RelPath  string               `json:"rel_path"`
+	Services []*configSvcResponse `json:"services"`
+}
+
 type configResponse struct {
-	App     *config.App                    `json:"app"`
-	Desired map[string]map[string][]string `json:"desired"`
+	Name         string               `json:"name"`
+	RepoURL      string               `json:"repo_url"`
+	Path         string               `json:"path"`
+	Environments []*configEnvResponse `json:"environments"`
+}
+
+func createConfigResponse(app *config.App, state map[string]map[string][]string) *configResponse {
+	r := &configResponse{
+		Name:         app.Name,
+		RepoURL:      app.RepoURL,
+		Path:         app.Path,
+		Environments: []*configEnvResponse{},
+	}
+	app.EachEnvironment(func(env *config.Environment) error {
+		respEnv := &configEnvResponse{Name: env.Name, RelPath: env.RelPath, Services: []*configSvcResponse{}}
+		for svc, imgs := range state[env.Name] {
+			respSvc := &configSvcResponse{Name: svc, Images: []string{}}
+			for _, v := range imgs {
+				respSvc.Images = append(respSvc.Images, v)
+			}
+			respEnv.Services = append(respEnv.Services, respSvc)
+		}
+		r.Environments = append(r.Environments, respEnv)
+		return nil
+	})
+	return r
 }

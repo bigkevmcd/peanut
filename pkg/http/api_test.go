@@ -79,28 +79,33 @@ func TestGetDesiredState(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertJSONResponse(t, res, map[string]interface{}{
-		"app": map[string]interface{}{
-			"name":     "go-demo",
-			"repo_url": "../../",
-			"path":     "pkg/config/testdata/go-demo/base",
-			"environments": []interface{}{
-				map[string]interface{}{"name": "dev", "rel_path": "../overlays/dev"},
-				map[string]interface{}{"name": "staging", "rel_path": "../overlays/staging"},
-				map[string]interface{}{"name": "production", "rel_path": "../overlays/production"},
+		"name":     "go-demo",
+		"path":     "pkg/config/testdata/go-demo/base",
+		"repo_url": "../../",
+		"environments": []interface{}{
+			map[string]interface{}{
+				"name":     "dev",
+				"rel_path": "../overlays/dev",
+				"services": []interface{}{
+					map[string]interface{}{"images": []interface{}{"bigkevmcd/go-demo:latest"}, "name": "go-demo-http"},
+					map[string]interface{}{"images": []interface{}{"redis:6-alpine"}, "name": "redis"},
+				},
 			},
-		},
-		"desired": map[string]interface{}{
-			"dev": map[string]interface{}{
-				"go-demo-http": []interface{}{"bigkevmcd/go-demo:latest"},
-				"redis":        []interface{}{"redis:6-alpine"},
+			map[string]interface{}{
+				"name":     "staging",
+				"rel_path": "../overlays/staging",
+				"services": []interface{}{
+					map[string]interface{}{"images": []interface{}{"bigkevmcd/go-demo:staging"}, "name": "go-demo-http"},
+					map[string]interface{}{"images": []interface{}{"redis:6-alpine"}, "name": "redis"},
+				},
 			},
-			"production": map[string]interface{}{
-				"go-demo-http": []interface{}{"bigkevmcd/go-demo:production"},
-				"redis":        []interface{}{"redis:6-alpine"},
-			},
-			"staging": map[string]interface{}{
-				"go-demo-http": []interface{}{"bigkevmcd/go-demo:staging"},
-				"redis":        []interface{}{"redis:6-alpine"},
+			map[string]interface{}{
+				"name":     "production",
+				"rel_path": "../overlays/production",
+				"services": []interface{}{
+					map[string]interface{}{"images": []interface{}{"bigkevmcd/go-demo:production"}, "name": "go-demo-http"},
+					map[string]interface{}{"images": []interface{}{"redis:6-alpine"}, "name": "redis"},
+				},
 			},
 		},
 	})

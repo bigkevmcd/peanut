@@ -1,0 +1,11 @@
+apps:
+- name: go-demo
+  repo_url: https://github.com/bigkevmcd/peanut.git
+  path: pkg/config/testdata/go-demo/base
+  environments:
+  - name: dev
+    rel_path: ../overlays/dev
+  - name: staging
+    rel_path: ../overlays/staging
+  - name: production
+    rel_path: ../overlays/production
