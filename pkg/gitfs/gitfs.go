@@ -18,6 +18,11 @@ type gitFS struct {
 	tree *object.Tree
 }
 
+// New creates and returns a go-git storage adapter.
+func New(t *object.Tree) fs.FileSystem {
+	return &gitFS{tree: t}
+}
+
 // NewInMemoryFromOptions clones a Git repository into memory.
 func NewInMemoryFromOptions(opts *git.CloneOptions) (fs.FileSystem, error) {
 	clone, err := git.Clone(memory.NewStorage(), nil, opts)
@@ -38,36 +43,6 @@ func NewInMemoryFromOptions(opts *git.CloneOptions) (fs.FileSystem, error) {
 		return nil, err
 	}
 	return New(tree), nil
-}
-
-// New creates and returns a go-git storage adapter.
-func New(t *object.Tree) fs.FileSystem {
-	return &gitFS{tree: t}
-}
-
-// Create implements fs.FileSystem.
-func (g gitFS) Create(name string) (fs.File, error) {
-	return nil, errNotSupported("Create")
-}
-
-// MkDir implements fs.FileSystem.
-func (g gitFS) Mkdir(name string) error {
-	return errNotSupported("MkDir")
-}
-
-// MkDirAll implements fs.FileSystem.
-func (g gitFS) MkdirAll(name string) error {
-	return errNotSupported("MkdirAll")
-}
-
-// RemoveAll implements fs.FileSystem.
-func (g gitFS) RemoveAll(name string) error {
-	return errNotSupported("RemoveAll")
-}
-
-// Open implements fs.FileSystem.
-func (g gitFS) Open(name string) (fs.File, error) {
-	return nil, errNotSupported("Open")
 }
 
 // IsDir implements fs.FileSystem.
@@ -108,16 +83,6 @@ func (g gitFS) CleanedAbs(p string) (fs.ConfirmedDir, string, error) {
 	return fs.ConfirmedDir(d), f, nil
 }
 
-// Exists implements fs.FileSystem.
-func (g gitFS) Exists(name string) bool {
-	return false
-}
-
-// Glob implements fs.FileSystem.
-func (g gitFS) Glob(pattern string) ([]string, error) {
-	return nil, errNotSupported("Glob")
-}
-
 // ReadFile implements fs.FileSystem.
 func (g gitFS) ReadFile(name string) ([]byte, error) {
 	f, err := g.tree.File(name)
@@ -129,6 +94,41 @@ func (g gitFS) ReadFile(name string) ([]byte, error) {
 		return nil, err
 	}
 	return []byte(b), nil
+}
+
+// Create implements fs.FileSystem.
+func (g gitFS) Create(name string) (fs.File, error) {
+	return nil, errNotSupported("Create")
+}
+
+// MkDir implements fs.FileSystem.
+func (g gitFS) Mkdir(name string) error {
+	return errNotSupported("MkDir")
+}
+
+// MkDirAll implements fs.FileSystem.
+func (g gitFS) MkdirAll(name string) error {
+	return errNotSupported("MkdirAll")
+}
+
+// RemoveAll implements fs.FileSystem.
+func (g gitFS) RemoveAll(name string) error {
+	return errNotSupported("RemoveAll")
+}
+
+// Open implements fs.FileSystem.
+func (g gitFS) Open(name string) (fs.File, error) {
+	return nil, errNotSupported("Open")
+}
+
+// Exists implements fs.FileSystem.
+func (g gitFS) Exists(name string) bool {
+	return false
+}
+
+// Glob implements fs.FileSystem.
+func (g gitFS) Glob(pattern string) ([]string, error) {
+	return nil, errNotSupported("Glob")
 }
 
 // WriteFile implements fs.FileSystem.
