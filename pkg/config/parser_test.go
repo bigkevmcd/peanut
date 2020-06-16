@@ -1,13 +1,15 @@
 package config
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestParse(t *testing.T) {
+func TestParseFile(t *testing.T) {
 	parseTests := []struct {
 		filename string
 		want     *Config
@@ -43,6 +45,31 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestParseFileWithMissingFile(t *testing.T) {
+	_, err := ParseFile("/tmp/unknown.yaml")
+
+	if err == nil {
+		t.Fatal("expected an error parsing an unknown file.")
+	}
+}
+
+func TestParseWithBadReader(t *testing.T) {
+	testErr := errors.New("this is a bad reader")
+	_, err := Parse(fakeReader{err: testErr})
+
+	if err != testErr {
+		t.Fatalf("got %v, want %v", err, testErr)
+	}
+}
+
+func TestParseWithBadYAML(t *testing.T) {
+	_, err := Parse(bytes.NewReader([]byte(`test`)))
+
+	if err == nil {
+		t.Fatal("expected an error parsing bad YAML")
+	}
+}
+
 func TestAppParseManifests(t *testing.T) {
 	goDemo := &App{
 		Name:    "go-demo",
@@ -74,4 +101,12 @@ func assertCmp(t *testing.T, want, got interface{}, msg string) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Fatalf(msg+":\n%s", diff)
 	}
+}
+
+type fakeReader struct {
+	err error
+}
+
+func (f fakeReader) Read(p []byte) (int, error) {
+	return 0, f.err
 }

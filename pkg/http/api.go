@@ -44,13 +44,12 @@ func (a *APIRouter) GetAppConfig(w http.ResponseWriter, r *http.Request) {
 	app := a.cfg.App(params.ByName("name"))
 	w.Header().Set("Content-Type", "application/json")
 
-	desired, err := app.ParseManifests()
+	desired, err := config.ParseManifests(app)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// resp := configResponse{App: app, Desired: desired[app.Name]}
 	json.NewEncoder(w).Encode(createConfigResponse(app, desired[app.Name]))
 }
 

@@ -27,7 +27,7 @@ func ParseManifests(a *App) (map[string]map[string]map[string][]string, error) {
 	}
 	// TODO: This should probably reject data if the app is not the same as
 	// a.Name.
-	a.EachEnvironment(func(e *Environment) error {
+	err = a.EachEnvironment(func(e *Environment) error {
 		parsed, err := parser.ParseConfig(e.Path(), gfs)
 		if err != nil {
 			return err
@@ -46,7 +46,7 @@ func ParseManifests(a *App) (map[string]map[string]map[string][]string, error) {
 		}
 		return nil
 	})
-	return result, nil
+	return result, err
 }
 
 // Parse decodes YAML describing an environment manifest.
@@ -56,6 +56,7 @@ func Parse(in io.Reader) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	err = yaml.Unmarshal(buf, m)
 	if err != nil {
 		return nil, err
