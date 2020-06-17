@@ -4,10 +4,10 @@ import (
 	"sort"
 
 	"github.com/go-git/go-git/v5"
-
 	"sigs.k8s.io/kustomize/k8sdeps"
 	"sigs.k8s.io/kustomize/pkg/fs"
 	"sigs.k8s.io/kustomize/pkg/loader"
+	"sigs.k8s.io/kustomize/pkg/resmap"
 	"sigs.k8s.io/kustomize/pkg/target"
 
 	"github.com/bigkevmcd/peanut/pkg/gitfs"
@@ -75,22 +75,7 @@ func ParseFromGit(path string, opts *git.CloneOptions) (*Config, error) {
 // and parses the configuration into apps.
 func ParseConfig(path string, files fs.FileSystem) (*Config, error) {
 	cfg := &Config{Apps: []*App{}}
-	k8sfactory := k8sdeps.NewFactory()
-	ldr, err := loader.NewLoader(path, files)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		err = ldr.Cleanup()
-		if err != nil {
-			panic(err)
-		}
-	}()
-	kt, err := target.NewKustTarget(ldr, k8sfactory.ResmapF, k8sfactory.TransformerF)
-	if err != nil {
-		return nil, err
-	}
-	r, err := kt.MakeCustomizedResMap()
+	r, err := ParseTreeToResMap(path, files)
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +102,31 @@ func ParseConfig(path string, files fs.FileSystem) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// ParseTreeToResMap is the main Kustomize parsing mechanism, it returns the raw
+// objects parsed by Kustomize.
+func ParseTreeToResMap(path string, files fs.FileSystem) (resmap.ResMap, error) {
+	k8sfactory := k8sdeps.NewFactory()
+	ldr, err := loader.NewLoader(path, files)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err = ldr.Cleanup()
+		if err != nil {
+			panic(err)
+		}
+	}()
+	kt, err := target.NewKustTarget(ldr, k8sfactory.ResmapF, k8sfactory.TransformerF)
+	if err != nil {
+		return nil, err
+	}
+	r, err := kt.MakeCustomizedResMap()
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func appName(r map[string]string) string {
