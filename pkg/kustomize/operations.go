@@ -1,21 +1,44 @@
 package kustomize
 
 import (
-	"log"
-
-	"sigs.k8s.io/kustomize/pkg/commands/kustfile"
-	"sigs.k8s.io/kustomize/pkg/fs"
+	// "sigs.k8s.io/kustomize/pkg/commands/kustfile"
+	// "sigs.k8s.io/kustomize/pkg/fs"
+	"sigs.k8s.io/kustomize/pkg/image"
+	"sigs.k8s.io/kustomize/pkg/types"
 )
 
-func OverrideImage(fSys fs.FileSystem) error {
-	mf, err := kustfile.NewKustomizationFile(fSys)
-	if err != nil {
-		return err
+type Kustomizer struct {
+	imageOverrides map[string]image.Image
+	src            *types.Kustomization
+}
+
+// NewKustomizer creates and returns a new Kustomizer for manipulating
+// Kustomization files.
+func NewKustomizer(k *types.Kustomization) *Kustomizer {
+	imageOverrides := map[string]image.Image{}
+	for _, v := range k.Images {
+		imageOverrides[v.Name] = v
 	}
-	m, err := mf.Read()
-	if err != nil {
-		return err
+	return &Kustomizer{
+		src:            k,
+		imageOverrides: imageOverrides,
 	}
-	log.Printf("testing: %#v and %#v\n", mf, m)
+}
+
+// AddImageOverride adds an override for a specific image.
+//
+// Existing overrides for the same image are replaced.
+func (k *Kustomizer) AddImageOverride(srcImage, newTag string) error {
+	k.imageOverrides[srcImage] = image.Image{Name: srcImage, NewTag: newTag}
 	return nil
+}
+
+// Kustomization gets the updated configuration.
+func (k *Kustomizer) Kustomization() *types.Kustomization {
+	images := []image.Image{}
+	for _, v := range k.imageOverrides {
+		images = append(images, v)
+	}
+	k.src.Images = images
+	return k.src
 }
