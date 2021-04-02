@@ -3,8 +3,8 @@ package kustomize
 import (
 	"testing"
 
-	"sigs.k8s.io/kustomize/pkg/image"
-	"sigs.k8s.io/kustomize/pkg/types"
+	"sigs.k8s.io/kustomize/v3/pkg/image"
+	"sigs.k8s.io/kustomize/v3/pkg/types"
 
 	"github.com/google/go-cmp/cmp"
 )

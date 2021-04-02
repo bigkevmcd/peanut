@@ -1,0 +1,12 @@
+bases:
+- https://github.com/bigkevmcd/taxi/deploy
+patches:
+- patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 5
+  target:
+    kind: Deployment
+    version: v1
+    group: apps
+    name: taxi

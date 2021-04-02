@@ -3,13 +3,14 @@ package gitfs
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"sigs.k8s.io/kustomize/pkg/fs"
+	"sigs.k8s.io/kustomize/api/filesys"
 )
 
 // gitFS is an internal implementation of the Kustomize
@@ -19,12 +20,12 @@ type gitFS struct {
 }
 
 // New creates and returns a go-git storage adapter.
-func New(t *object.Tree) fs.FileSystem {
+func New(t *object.Tree) filesys.FileSystem {
 	return &gitFS{tree: t}
 }
 
 // NewInMemoryFromOptions clones a Git repository into memory.
-func NewInMemoryFromOptions(opts *git.CloneOptions) (fs.FileSystem, error) {
+func NewInMemoryFromOptions(opts *git.CloneOptions) (filesys.FileSystem, error) {
 	clone, err := git.Clone(memory.NewStorage(), nil, opts)
 	if err != nil {
 		return nil, err
@@ -45,7 +46,7 @@ func NewInMemoryFromOptions(opts *git.CloneOptions) (fs.FileSystem, error) {
 	return New(tree), nil
 }
 
-// IsDir implements fs.FileSystem.
+// IsDir implements filesys.FileSystem.
 func (g gitFS) IsDir(name string) bool {
 	// If it exists as a file, it's not a directory.
 	_, err := g.tree.File(name)
@@ -73,17 +74,17 @@ func (g gitFS) IsDir(name string) bool {
 	return isDir
 }
 
-// CleanedAbs implements fs.FileSystem.
-func (g gitFS) CleanedAbs(p string) (fs.ConfirmedDir, string, error) {
+// CleanedAbs implements filesys.FileSystem.
+func (g gitFS) CleanedAbs(p string) (filesys.ConfirmedDir, string, error) {
 	if g.IsDir(p) {
-		return fs.ConfirmedDir(p), "", nil
+		return filesys.ConfirmedDir(p), "", nil
 	}
 	d := path.Dir(p)
 	f := path.Base(p)
-	return fs.ConfirmedDir(d), f, nil
+	return filesys.ConfirmedDir(d), f, nil
 }
 
-// ReadFile implements fs.FileSystem.
+// ReadFile implements filesys.FileSystem.
 func (g gitFS) ReadFile(name string) ([]byte, error) {
 	f, err := g.tree.File(name)
 	if err != nil {
@@ -96,42 +97,47 @@ func (g gitFS) ReadFile(name string) ([]byte, error) {
 	return []byte(b), nil
 }
 
-// Create implements fs.FileSystem.
-func (g gitFS) Create(name string) (fs.File, error) {
+// Walk implements filesys.FileSystem.
+func (g gitFS) Walk(path string, walkFn filepath.WalkFunc) error {
+	return errNotSupported("Walk")
+}
+
+// Create implements filesys.FileSystem.
+func (g gitFS) Create(name string) (filesys.File, error) {
 	return nil, errNotSupported("Create")
 }
 
-// MkDir implements fs.FileSystem.
+// MkDir implements filesys.FileSystem.
 func (g gitFS) Mkdir(name string) error {
 	return errNotSupported("MkDir")
 }
 
-// MkDirAll implements fs.FileSystem.
+// MkDirAll implements filesys.FileSystem.
 func (g gitFS) MkdirAll(name string) error {
 	return errNotSupported("MkdirAll")
 }
 
-// RemoveAll implements fs.FileSystem.
+// RemoveAll implements filesys.FileSystem.
 func (g gitFS) RemoveAll(name string) error {
 	return errNotSupported("RemoveAll")
 }
 
-// Open implements fs.FileSystem.
-func (g gitFS) Open(name string) (fs.File, error) {
+// Open implements filesys.FileSystem.
+func (g gitFS) Open(name string) (filesys.File, error) {
 	return nil, errNotSupported("Open")
 }
 
-// Exists implements fs.FileSystem.
+// Exists implements filesys.FileSystem.
 func (g gitFS) Exists(name string) bool {
 	return false
 }
 
-// Glob implements fs.FileSystem.
+// Glob implements filesys.FileSystem.
 func (g gitFS) Glob(pattern string) ([]string, error) {
 	return nil, errNotSupported("Glob")
 }
 
-// WriteFile implements fs.FileSystem.
+// WriteFile implements filesys.FileSystem.
 func (g gitFS) WriteFile(name string, data []byte) error {
 	return errNotSupported("WriteFile")
 }

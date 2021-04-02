@@ -6,10 +6,10 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-cmp/cmp"
-	"sigs.k8s.io/kustomize/pkg/fs"
+	"sigs.k8s.io/kustomize/api/filesys"
 )
 
-var _ fs.FileSystem = gitFS{}
+var _ filesys.FileSystem = gitFS{}
 
 func TestUnsupportedFeatures(t *testing.T) {
 	gfs := gitFS{}
@@ -59,7 +59,7 @@ func TestCleanedAbs(t *testing.T) {
 	dir, _, err := gfs.CleanedAbs("pkg/gitfs/gitfs_test.go")
 	assertNoError(t, err)
 
-	if dir != fs.ConfirmedDir("pkg/gitfs") {
+	if dir != filesys.ConfirmedDir("pkg/gitfs") {
 		t.Fatalf("got %#v", dir)
 	}
 }
@@ -102,7 +102,7 @@ func TestNewInMemoryFromOptions(t *testing.T) {
 	}
 }
 
-func makeClonedGFS(t *testing.T) fs.FileSystem {
+func makeClonedGFS(t *testing.T) filesys.FileSystem {
 	t.Helper()
 	gfs, err := NewInMemoryFromOptions(
 		&git.CloneOptions{
