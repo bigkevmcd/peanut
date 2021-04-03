@@ -1,10 +1,8 @@
 package kustomize
 
 import (
-	// "sigs.k8s.io/kustomize/pkg/commands/kustfile"
-	// "sigs.k8s.io/kustomize/pkg/fs"
-	"sigs.k8s.io/kustomize/pkg/image"
-	"sigs.k8s.io/kustomize/pkg/types"
+	"sigs.k8s.io/kustomize/v3/pkg/image"
+	"sigs.k8s.io/kustomize/v3/pkg/types"
 )
 
 type Kustomizer struct {

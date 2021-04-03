@@ -1,14 +1,15 @@
 package parser
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/go-git/go-git/v5"
-	"sigs.k8s.io/kustomize/k8sdeps"
-	"sigs.k8s.io/kustomize/pkg/fs"
-	"sigs.k8s.io/kustomize/pkg/loader"
-	"sigs.k8s.io/kustomize/pkg/resmap"
-	"sigs.k8s.io/kustomize/pkg/target"
+	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/api/konfig"
+	"sigs.k8s.io/kustomize/api/krusty"
+	"sigs.k8s.io/kustomize/api/resmap"
+	kustypes "sigs.k8s.io/kustomize/api/types"
 
 	"github.com/bigkevmcd/peanut/pkg/gitfs"
 )
@@ -57,7 +58,7 @@ type Service struct {
 //
 // Also multi-Deployment services are not supported currently.
 func Parse(path string) (*Config, error) {
-	fs := fs.MakeRealFS()
+	fs := filesys.MakeFsOnDisk()
 	return ParseConfig(path, fs)
 }
 
@@ -73,20 +74,23 @@ func ParseFromGit(path string, opts *git.CloneOptions) (*Config, error) {
 
 // ParseConfig takes a path and an implementation of the kustomize fs.FileSystem
 // and parses the configuration into apps.
-func ParseConfig(path string, files fs.FileSystem) (*Config, error) {
+func ParseConfig(path string, files filesys.FileSystem) (*Config, error) {
 	cfg := &Config{Apps: []*App{}}
-	r, err := ParseTreeToResMap(path, files)
+	resMap, err := ParseTreeToResMap(path, files)
 	if err != nil {
 		return nil, err
 	}
-	if len(r) == 0 {
+	if resMap.Size() == 0 {
 		return nil, nil
 	}
-	for k, v := range r {
-		gvk := k.Gvk()
-		switch gvk.Kind {
+	for _, k := range resMap.AllIds() {
+		switch k.Gvk.Kind {
 		case "Deployment":
-			name := appName(v.GetLabels())
+			r, err := resMap.GetById(k)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get resource %v: %w", k, err)
+			}
+			name := appName(r.GetLabels())
 			if name == "" {
 				continue
 			}
@@ -95,7 +99,7 @@ func ParseConfig(path string, files fs.FileSystem) (*Config, error) {
 				app = &App{Name: name}
 				cfg.Apps = append(cfg.Apps, app)
 			}
-			svc := extractService(v.Map())
+			svc := extractService(r.Map())
 			app.Services = append(app.Services, svc)
 			sort.Slice(app.Services, func(i, j int) bool { return app.Services[i].Name < app.Services[j].Name })
 		}
@@ -106,27 +110,19 @@ func ParseConfig(path string, files fs.FileSystem) (*Config, error) {
 
 // ParseTreeToResMap is the main Kustomize parsing mechanism, it returns the raw
 // objects parsed by Kustomize.
-func ParseTreeToResMap(path string, files fs.FileSystem) (resmap.ResMap, error) {
-	k8sfactory := k8sdeps.NewFactory()
-	ldr, err := loader.NewLoader(path, files)
-	if err != nil {
-		return nil, err
+func ParseTreeToResMap(dirPath string, files filesys.FileSystem) (resmap.ResMap, error) {
+	buildOptions := &krusty.Options{
+		UseKyaml:               false,
+		DoLegacyResourceSort:   true,
+		LoadRestrictions:       kustypes.LoadRestrictionsNone,
+		AddManagedbyLabel:      false,
+		DoPrune:                false,
+		PluginConfig:           konfig.DisabledPluginConfig(),
+		AllowResourceIdChanges: false,
 	}
-	defer func() {
-		err = ldr.Cleanup()
-		if err != nil {
-			panic(err)
-		}
-	}()
-	kt, err := target.NewKustTarget(ldr, k8sfactory.ResmapF, k8sfactory.TransformerF)
-	if err != nil {
-		return nil, err
-	}
-	r, err := kt.MakeCustomizedResMap()
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
+
+	k := krusty.MakeKustomizer(files, buildOptions)
+	return k.Run(dirPath)
 }
 
 func appName(r map[string]string) string {
