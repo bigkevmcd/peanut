@@ -58,6 +58,20 @@ func TestParseApplication(t *testing.T) {
 				},
 			},
 		},
+		{
+			"testdata/app3",
+			"Kustomize 3 configuration - remote path - THIS COULD BREAK",
+			&Config{
+				Apps: []*App{
+					{
+						Name: "taxi",
+						Services: []*Service{
+							{Name: "taxi", Replicas: 5, Images: []string{"quay.io/kmcdermo/taxi:master"}},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range parseTests {
