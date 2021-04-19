@@ -3,8 +3,9 @@ module github.com/bigkevmcd/peanut
 go 1.14
 
 require (
+	github.com/go-git/go-billy/v5 v5.1.0
 	github.com/go-git/go-git/v5 v5.1.0
-	github.com/go-openapi/spec v0.19.6 // indirect
+	github.com/go-openapi/spec v0.19.7 // indirect
 	github.com/go-openapi/swag v0.19.7 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/google/go-cmp v0.4.1
