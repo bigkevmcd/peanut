@@ -1,4 +1,4 @@
-bases:
+resources:
 - https://github.com/bigkevmcd/taxi/deploy
 images:
 - name: quay.io/kmcdermo/taxi

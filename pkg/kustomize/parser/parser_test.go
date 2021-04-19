@@ -1,10 +1,14 @@
 package parser
 
 import (
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestParseNoFile(t *testing.T) {
@@ -18,71 +22,61 @@ func TestParseNoFile(t *testing.T) {
 	}
 }
 
-func TestParseApplication(t *testing.T) {
-	parseTests := []struct {
-		filename    string
-		description string
-		want        *Config
-	}{
-		{
-			"testdata/app1",
-			"empty kustomization",
-			nil,
-		},
-		{
-			"testdata/go-demo",
-			"completely local - paths refer to relative paths",
-			&Config{
-				Apps: []*App{
-					{
-						Name: "go-demo",
-						Services: []*Service{
-							{Name: "go-demo-http", Replicas: 1, Images: []string{"bigkevmcd/go-demo:876ecb3"}},
-							{Name: "redis", Replicas: 1, Images: []string{"redis:6-alpine"}},
-						},
-					},
-				},
-			},
-		},
-		{
-			"testdata/app2",
-			"local file refers to a remote path - THIS COULD BREAK",
-			&Config{
-				Apps: []*App{
-					{
-						Name: "taxi",
-						Services: []*Service{
-							{Name: "taxi", Replicas: 1, Images: []string{"quay.io/kmcdermo/taxi:147036"}},
-						},
-					},
-				},
-			},
-		},
-		{
-			"testdata/app3",
-			"Kustomize 3 configuration - remote path - THIS COULD BREAK",
-			&Config{
-				Apps: []*App{
-					{
-						Name: "taxi",
-						Services: []*Service{
-							{Name: "taxi", Replicas: 5, Images: []string{"quay.io/kmcdermo/taxi:master"}},
-						},
-					},
-				},
-			},
-		},
-	}
+// func TestParseApplication(t *testing.T) {
+// 	parseTests := []struct {
+// 		filename    string
+// 		description string
+// 		want        []runtime.Object
+// 	}{
+// 		{
+// 			"testdata/app1",
+// 			"empty kustomization",
+// 			nil,
+// 		},
+// 		{
+// 			"testdata/go-demo",
+// 			"completely local - paths refer to relative paths",
+// 			nil,
+// 		},
+// 		{
+// 			"testdata/app2",
+// 			"local file refers to a remote path",
+// 			nil,
+// 		},
+// 		{
+// 			"testdata/app3",
+// 			"Kustomize 3 configuration - remote path",
+// 			nil,
+// 		},
+// 	}
 
-	for _, tt := range parseTests {
-		app, err := Parse(tt.filename)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if diff := cmp.Diff(tt.want, app); diff != "" {
-			t.Errorf("%s failed to parse:\n%s", tt.filename, diff)
-		}
+// 	for _, tt := range parseTests {
+// 		app, err := Parse(tt.filename)
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+// 		if diff := cmp.Diff(tt.want, app); diff != "" {
+// 			t.Errorf("%s failed to parse:\n%s", tt.filename, diff)
+// 		}
+// 	}
+// }
+
+func TestParseFromGit(t *testing.T) {
+	res, err := ParseFromGit(
+		"pkg/kustomize/parser/testdata/go-demo",
+		&git.CloneOptions{
+			URL:   "../../..",
+			Depth: 1,
+		})
+
+	if err != nil {
+		t.Fatal(err)
 	}
+	sort.SliceStable(res, func(i, j int) bool { return resKey(t, res[i]) < resKey(t, res[j]) })
+
+	want := []runtime.Object{}
+	// sort.SliceStable(want, func(i, j int) bool { return resKey(want[i]) < resKey(want[j]) })
+	assertCmp(t, want, res, "failed to match parsed resources")
 }
 
 func TestParseApplicationFromGit(t *testing.T) {
@@ -96,69 +90,7 @@ func TestParseApplicationFromGit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := &Config{
-		Apps: []*App{
-			{
-				Name: "go-demo",
-				Services: []*Service{
-					{Name: "go-demo-http", Replicas: 1, Images: []string{"bigkevmcd/go-demo:876ecb3"}},
-					{Name: "redis", Replicas: 1, Images: []string{"redis:6-alpine"}},
-				},
-			},
-		},
-	}
-	assertCmp(t, want, app, "failed to match app")
-}
-
-func TestAppName(t *testing.T) {
-	redis := map[string]string{"app.kubernetes.io/name": "redis", "app.kubernetes.io/part-of": "go-demo"}
-	name := appName(redis)
-
-	if name != "go-demo" {
-		t.Fatalf("got %#v, want %#v", name, "go-demo")
-	}
-}
-
-func TestExtractService(t *testing.T) {
-	redisMap := map[string]interface{}{
-		"apiVersion": "apps/v1",
-		"kind":       "Deployment",
-		"metadata": map[string]interface{}{
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name":    "redis",
-				"app.kubernetes.io/part-of": "go-demo",
-			},
-			"name":      "redis",
-			"namespace": "test-env",
-		},
-		"spec": map[string]interface{}{
-			"replicas": int64(1),
-			"template": map[string]interface{}{
-				"spec": map[string]interface{}{
-					"containers": []interface{}{
-						map[string]interface{}{
-							"image": "redis:6-alpine",
-							"name":  "redis",
-							"ports": []interface{}{
-								map[string]interface{}{
-									"containerPort": 6379,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	svc := extractService(redisMap)
-	want := &Service{
-		Name:      "redis",
-		Namespace: "test-env",
-		Replicas:  1,
-		Images:    []string{"redis:6-alpine"},
-	}
-	assertCmp(t, want, svc, "failed to match service")
+	assertCmp(t, "testing", app, "failed to match app")
 }
 
 func assertCmp(t *testing.T, want, got interface{}, msg string) {
@@ -166,4 +98,17 @@ func assertCmp(t *testing.T, want, got interface{}, msg string) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Fatalf(msg+":\n%s", diff)
 	}
+}
+
+func resKey(t *testing.T, o runtime.Object) string {
+	oa, err := meta.Accessor(o)
+	if err != nil {
+		t.Fatalf("failed to get the object meta for object %#v: %s", o, err)
+	}
+	ta, err := meta.TypeAccessor(o)
+	if err != nil {
+		t.Fatalf("failed to get the type meta for object %#v: %s", o, err)
+	}
+
+	return strings.Join([]string{oa.GetName(), oa.GetNamespace(), ta.GetKind(), ta.GetAPIVersion()}, "-")
 }
