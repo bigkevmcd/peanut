@@ -6,10 +6,8 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"sigs.k8s.io/kustomize/api/filesys"
-	"sigs.k8s.io/kustomize/api/konfig"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
-	kustypes "sigs.k8s.io/kustomize/api/types"
 
 	"github.com/bigkevmcd/peanut/pkg/gitfs"
 )
@@ -99,7 +97,11 @@ func ParseConfig(path string, files filesys.FileSystem) (*Config, error) {
 				app = &App{Name: name}
 				cfg.Apps = append(cfg.Apps, app)
 			}
-			svc := extractService(r.Map())
+			data, err := r.Map()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get object data: %w", err)
+			}
+			svc := extractService(data)
 			app.Services = append(app.Services, svc)
 			sort.Slice(app.Services, func(i, j int) bool { return app.Services[i].Name < app.Services[j].Name })
 		}
@@ -111,18 +113,8 @@ func ParseConfig(path string, files filesys.FileSystem) (*Config, error) {
 // ParseTreeToResMap is the main Kustomize parsing mechanism, it returns the raw
 // objects parsed by Kustomize.
 func ParseTreeToResMap(dirPath string, files filesys.FileSystem) (resmap.ResMap, error) {
-	buildOptions := &krusty.Options{
-		UseKyaml:               false,
-		DoLegacyResourceSort:   true,
-		LoadRestrictions:       kustypes.LoadRestrictionsNone,
-		AddManagedbyLabel:      false,
-		DoPrune:                false,
-		PluginConfig:           konfig.DisabledPluginConfig(),
-		AllowResourceIdChanges: false,
-	}
-
-	k := krusty.MakeKustomizer(files, buildOptions)
-	return k.Run(dirPath)
+	k := krusty.MakeKustomizer(krusty.MakeDefaultOptions())
+	return k.Run(files, dirPath)
 }
 
 func appName(r map[string]string) string {
@@ -138,13 +130,24 @@ func extractService(v map[string]interface{}) *Service {
 	svc := &Service{
 		Name:      mapString("name", meta),
 		Namespace: mapString("namespace", meta),
-		Replicas:  spec["replicas"].(int64),
+		Replicas:  mapInt64("replicas", spec),
 		Images:    []string{},
 	}
 	for _, v := range templateSpec["containers"].([]interface{}) {
 		svc.Images = append(svc.Images, mapString("image", v.(map[string]interface{})))
 	}
 	return svc
+}
+
+func mapInt64(k string, v map[string]interface{}) int64 {
+	switch i := v[k].(type) {
+	case int:
+		return int64(i)
+	case int64:
+		return i
+	default:
+		return 0
+	}
 }
 
 func mapString(k string, v map[string]interface{}) string {

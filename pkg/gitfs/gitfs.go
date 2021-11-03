@@ -10,7 +10,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 // gitFS is an internal implementation of the Kustomize
@@ -44,6 +44,11 @@ func NewInMemoryFromOptions(opts *git.CloneOptions) (filesys.FileSystem, error) 
 		return nil, err
 	}
 	return New(tree), nil
+}
+
+// ReadDir implements filesys.FileSystem.
+func (g gitFS) ReadDir(path string) ([]string, error) {
+	return nil, errNotSupported("Walk")
 }
 
 // IsDir implements filesys.FileSystem.

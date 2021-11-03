@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-cmp/cmp"
-	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 var _ filesys.FileSystem = gitFS{}
@@ -24,6 +24,9 @@ func TestUnsupportedFeatures(t *testing.T) {
 	_, err = gfs.Glob("test*")
 	assertIsUnsupported(t, err)
 	err = gfs.WriteFile("testing", []byte("testing"))
+	assertIsUnsupported(t, err)
+
+	_, err = gfs.ReadDir("")
 	assertIsUnsupported(t, err)
 }
 
