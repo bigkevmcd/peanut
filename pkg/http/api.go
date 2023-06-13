@@ -2,22 +2,20 @@ package http
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
-	"github.com/go-git/go-git/v5"
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/bigkevmcd/peanut/pkg/config"
-	"github.com/bigkevmcd/peanut/pkg/kustomize/parser"
 )
 
-type gitParser func(path, opts *git.CloneOptions) *parser.Config
+// TODO: Add logr.Logger
 
 // APIRouter is an HTTP API for accessing app configurations.
 type APIRouter struct {
 	*httprouter.Router
-	cfg    *config.Config
-	parser gitParser
+	cfg *config.Config
 }
 
 // ListApps returns the list of configured apps.
@@ -27,7 +25,9 @@ func (a *APIRouter) ListApps(w http.ResponseWriter, r *http.Request) {
 		result.Apps = append(result.Apps, appResponse{Name: v.Name})
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Printf("failed to encode resource as JSON: %s", err)
+	}
 }
 
 // GetApp returns a specific app.
@@ -35,7 +35,9 @@ func (a *APIRouter) GetApp(w http.ResponseWriter, r *http.Request) {
 	params := httprouter.ParamsFromContext(r.Context())
 	app := a.cfg.App(params.ByName("name"))
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(app)
+	if err := json.NewEncoder(w).Encode(app); err != nil {
+		log.Printf("failed to encode resource as JSON: %s", err)
+	}
 }
 
 // GetAppConfig returns a specific app's desired state.
@@ -50,7 +52,15 @@ func (a *APIRouter) GetAppConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(createConfigResponse(app, desired[app.Name]))
+	response, err := createConfigResponse(app, desired[app.Name])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("failed to encode resource as JSON: %s", err)
+	}
 }
 
 // GetEnvironment returns a specific app.
@@ -58,7 +68,9 @@ func (a *APIRouter) GetEnvironment(w http.ResponseWriter, r *http.Request) {
 	params := httprouter.ParamsFromContext(r.Context())
 	env := a.cfg.App(params.ByName("name")).Environment(params.ByName("env"))
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(envResponse{Environment: env})
+	if err := json.NewEncoder(w).Encode(envResponse{Environment: env}); err != nil {
+		log.Printf("failed to encode resource as JSON: %s", err)
+	}
 }
 
 // NewRouter creates and returns a new APIRouter.
@@ -101,24 +113,26 @@ type configResponse struct {
 	Environments []*configEnvResponse `json:"environments"`
 }
 
-func createConfigResponse(app *config.App, state map[string]map[string][]string) *configResponse {
+func createConfigResponse(app *config.App, state map[string]map[string][]string) (*configResponse, error) {
 	r := &configResponse{
 		Name:         app.Name,
 		RepoURL:      app.RepoURL,
 		Path:         app.Path,
 		Environments: []*configEnvResponse{},
 	}
-	app.EachEnvironment(func(env *config.Environment) error {
+	err := app.EachEnvironment(func(env *config.Environment) error {
 		respEnv := &configEnvResponse{Name: env.Name, RelPath: env.RelPath, Services: []*configSvcResponse{}}
 		for svc, imgs := range state[env.Name] {
 			respSvc := &configSvcResponse{Name: svc, Images: []string{}}
-			for _, v := range imgs {
-				respSvc.Images = append(respSvc.Images, v)
-			}
+			respSvc.Images = append(respSvc.Images, imgs...)
 			respEnv.Services = append(respEnv.Services, respSvc)
 		}
 		r.Environments = append(r.Environments, respEnv)
 		return nil
 	})
-	return r
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }

@@ -5,9 +5,9 @@ import (
 	"sort"
 
 	"github.com/go-git/go-git/v5"
-	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"github.com/bigkevmcd/peanut/pkg/gitfs"
 )
