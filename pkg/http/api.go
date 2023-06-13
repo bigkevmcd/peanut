@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -123,6 +124,7 @@ func createConfigResponse(app *config.App, state map[string]map[string][]string)
 	err := app.EachEnvironment(func(env *config.Environment) error {
 		respEnv := &configEnvResponse{Name: env.Name, RelPath: env.RelPath, Services: []*configSvcResponse{}}
 		for svc, imgs := range state[env.Name] {
+			sort.Strings(imgs)
 			respSvc := &configSvcResponse{Name: svc, Images: []string{}}
 			respSvc.Images = append(respSvc.Images, imgs...)
 			respEnv.Services = append(respEnv.Services, respSvc)
