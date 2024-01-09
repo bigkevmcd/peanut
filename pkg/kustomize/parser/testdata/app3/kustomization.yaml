@@ -6,7 +6,9 @@ patches:
       path: /spec/replicas
       value: 5
   target:
-    kind: Deployment
-    version: v1
     group: apps
+    kind: Deployment
     name: taxi
+    version: v1
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization

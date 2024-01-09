@@ -76,8 +76,9 @@ func ParseConfig(path string, files filesys.FileSystem) (*Config, error) {
 	cfg := &Config{Apps: []*App{}}
 	resMap, err := ParseTreeToResMap(path, files)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse Kustomize resources: %w", err)
 	}
+
 	if resMap.Size() == 0 {
 		return nil, nil
 	}

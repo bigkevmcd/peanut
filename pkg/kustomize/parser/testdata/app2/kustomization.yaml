@@ -4,9 +4,11 @@ images:
 - name: quay.io/kmcdermo/taxi
   newTag: "147036"
 patches:
-- target:
-    version: v1
+- path: staging_patch.yaml
+  target:
     group: apps
     kind: Deployment
     name: taxi
-  path: staging_patch.yaml
+    version: v1
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
