@@ -1,7 +1,9 @@
 package pipeline
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"regexp"
 	"sort"
 	"strings"
@@ -20,10 +22,12 @@ var numericRe = regexp.MustCompile("^[0-9]+_")
 // e.g. 01_staging 02_production will be returned as staging, production.
 func ListStages(fs billy.Filesystem, dir string) ([]string, error) {
 	dirs, err := fs.ReadDir(dir)
-	stages := []string{}
-	if err != nil {
+
+	if err != nil && !isPathError(err) {
 		return nil, fmt.Errorf("failed to read directory %q: %w", dir, err)
 	}
+
+	stages := []string{}
 	for _, v := range dirs {
 		if !v.IsDir() {
 			continue
@@ -32,6 +36,12 @@ func ListStages(fs billy.Filesystem, dir string) ([]string, error) {
 	}
 	sort.Strings(stages)
 	return trimNumericPrefixes(stages), nil
+}
+
+func isPathError(err error) bool {
+	var pathErr *fs.PathError
+
+	return errors.As(err, &pathErr)
 }
 
 func trimNumericPrefixes(s []string) []string {
