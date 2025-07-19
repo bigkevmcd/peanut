@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/julienschmidt/httprouter"
-
 	"github.com/bigkevmcd/peanut/pkg/config"
 )
 
@@ -15,7 +13,7 @@ import (
 
 // APIRouter is an HTTP API for accessing app configurations.
 type APIRouter struct {
-	*httprouter.Router
+	*http.ServeMux
 	cfg *config.Config
 }
 
@@ -33,8 +31,7 @@ func (a *APIRouter) ListApps(w http.ResponseWriter, r *http.Request) {
 
 // GetApp returns a specific app.
 func (a *APIRouter) GetApp(w http.ResponseWriter, r *http.Request) {
-	params := httprouter.ParamsFromContext(r.Context())
-	app := a.cfg.App(params.ByName("name"))
+	app := a.cfg.App(r.PathValue("name"))
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(app); err != nil {
 		log.Printf("failed to encode resource as JSON: %s", err)
@@ -43,8 +40,7 @@ func (a *APIRouter) GetApp(w http.ResponseWriter, r *http.Request) {
 
 // GetAppConfig returns a specific app's desired state.
 func (a *APIRouter) GetAppConfig(w http.ResponseWriter, r *http.Request) {
-	params := httprouter.ParamsFromContext(r.Context())
-	app := a.cfg.App(params.ByName("name"))
+	app := a.cfg.App(r.PathValue("name"))
 	w.Header().Set("Content-Type", "application/json")
 
 	desired, err := config.ParseManifests(app)
@@ -66,8 +62,7 @@ func (a *APIRouter) GetAppConfig(w http.ResponseWriter, r *http.Request) {
 
 // GetEnvironment returns a specific app.
 func (a *APIRouter) GetEnvironment(w http.ResponseWriter, r *http.Request) {
-	params := httprouter.ParamsFromContext(r.Context())
-	env := a.cfg.App(params.ByName("name")).Environment(params.ByName("env"))
+	env := a.cfg.App(r.PathValue("name")).Environment(r.PathValue("env"))
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(envResponse{Environment: env}); err != nil {
 		log.Printf("failed to encode resource as JSON: %s", err)
@@ -76,11 +71,11 @@ func (a *APIRouter) GetEnvironment(w http.ResponseWriter, r *http.Request) {
 
 // NewRouter creates and returns a new APIRouter.
 func NewRouter(cfg *config.Config) *APIRouter {
-	api := &APIRouter{Router: httprouter.New(), cfg: cfg}
-	api.HandlerFunc(http.MethodGet, "/", api.ListApps)
-	api.HandlerFunc(http.MethodGet, "/apps/:name", api.GetApp)
-	api.HandlerFunc(http.MethodGet, "/apps/:name/desired", api.GetAppConfig)
-	api.HandlerFunc(http.MethodGet, "/apps/:name/envs/:env", api.GetEnvironment)
+	api := &APIRouter{ServeMux: http.NewServeMux(), cfg: cfg}
+	api.HandleFunc("GET /", api.ListApps)
+	api.HandleFunc("GET /apps/{name}", api.GetApp)
+	api.HandleFunc("GET /apps/{name}/desired", api.GetAppConfig)
+	api.HandleFunc("GET /apps/{name}/envs/{env}", api.GetEnvironment)
 	return api
 }
 

@@ -145,6 +145,6 @@ func assertJSONResponse(t *testing.T, res *http.Response, want map[string]interf
 		t.Fatalf("failed to parse %s: %s", b, err)
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Fatalf("JSON response failed:\n%s", diff)
+		t.Errorf("JSON response failed:\n%s", diff)
 	}
 }

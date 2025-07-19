@@ -8,7 +8,6 @@ require (
 	github.com/go-git/go-billy/v5 v5.6.1
 	github.com/go-git/go-git/v5 v5.13.1
 	github.com/google/go-cmp v0.6.0
-	github.com/julienschmidt/httprouter v1.3.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	sigs.k8s.io/kustomize/api v0.18.0
