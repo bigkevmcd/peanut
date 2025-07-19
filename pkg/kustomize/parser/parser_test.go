@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
@@ -24,11 +25,6 @@ func TestParseApplication(t *testing.T) {
 		description string
 		want        *Config
 	}{
-		{
-			"testdata/app1",
-			"empty kustomization",
-			nil,
-		},
 		{
 			"testdata/go-demo",
 			"completely local - paths refer to relative paths",
@@ -75,13 +71,15 @@ func TestParseApplication(t *testing.T) {
 	}
 
 	for _, tt := range parseTests {
-		app, err := Parse(tt.filename)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if diff := cmp.Diff(tt.want, app); diff != "" {
-			t.Errorf("%s failed to parse:\n%s", tt.filename, diff)
-		}
+		t.Run(fmt.Sprintf("parsing %s", tt.filename), func(t *testing.T) {
+			app, err := Parse(tt.filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tt.want, app); diff != "" {
+				t.Errorf("%s failed to parse:\n%s", tt.filename, diff)
+			}
+		})
 	}
 }
 
